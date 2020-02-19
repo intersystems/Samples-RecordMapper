@@ -1,0 +1,2 @@
+1;74;04/18/1974;Blue;Samuels,James N;555-55-5555;Miami Lakes;FL;13 NW 189 Street;33018
+2;69;07/09/1950;Yellow;Garcia,Lazaro E;555-55-5555;Miami;FL;1654 NW 8 Street;33125

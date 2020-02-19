@@ -1,0 +1,1070 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for Windows (x86-64) 2020.1.0L (Build 184U)" ts="2020-02-11 16:39:27">
+<Class name="Demo.RecordMap.Map.Delimited">
+<Description>
+This record map maps data in delimited text files to persistent InterSystems IRIS messages.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>EnsLib.RecordMap.RecordMap</Super>
+<TimeChanged>65420,59894.613165</TimeChanged>
+<TimeCreated>61860,35926.903928</TimeCreated>
+
+<Method name="GetObject">
+<Description>
+Method to retrieve a record from a stream or device. This method will be generated based on the
+structure of the RecordMap. For testing purposes, a file name may be passed in the pStream argument.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,*pObject:%RegisteredObject,pTimeout:%Numeric=-1,&pLookAhead:%String="",pLabelFound:%Boolean=0]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Try {
+		Set tStatus = $$$OK
+		Set pObject = $$$NULLOREF
+		If '$IsObject(pStream) {
+			Set tFilename = pStream
+			Set pStream = ##class(%IO.FileStream).%New()
+			Do pStream.Open(tFilename,,pTimeout,"UTF-8", .tStatus)
+			If $$$ISERR(tStatus) Quit
+		}
+		Set tObjectName = $parameter($this,"OBJECTNAME")
+		Set tObject = $classmethod(tObjectName,"%New")
+		If '$IsObject(tObject) {
+			Set tStatus = $$$ERROR($$$CannotCreateObject,tObjectName)
+			Quit
+		}
+		Set tObject.%Source = pStream.Name
+		Set tGetTopFields = $parameter(tObject,"INCLUDETOPFIELDS")
+		If pStream.AtEnd && (""=pLookAhead) {
+			Set tStatus = $$$ERROR($$$EnsRecordMapErrStreamAtEnd, pStream.Name)
+			Quit
+		}
+		Set pStream.CharEncoding = "UTF-8"
+
+		#; Parse incoming stream
+		Set tStatus = ..GetRecord(pStream, tObject, tGetTopFields, pTimeout, .pLookAhead, pLabelFound)
+		If $$$ISERR(tStatus) Quit
+	}
+	Catch ex {
+		Set tStatus = ex.AsStatus()
+	}
+	If $$$ISERR(tStatus) { Set pObject = $$$NULLOREF }
+	Else { Set pObject = tObject }
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Method name="PutObject">
+<Description>
+Method to write a record to a stream or device. This method will be generated based on the
+structure of the RecordMap. For testing purposes, a file name may be passed in the pStream argument.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,pObject:%RegisteredObject,pFlush:%Boolean=1,&pPadArray:%String]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Try {
+		Set tStatus = $$$OK
+		If '$IsObject(pStream) {
+			Set tFilename = pStream
+			Set pStream = ##class(%IO.FileStream).%New()
+			Do pStream.Open(tFilename,"WAE",,"UTF-8", .tStatus)
+			If $$$ISERR(tStatus) Quit
+		}
+		Set tHasTopFields = $parameter(pObject,"INCLUDETOPFIELDS")
+		Set pStream.CharEncoding = "UTF-8"
+
+		Set tStatus = ..PutRecord(pStream, pObject, tHasTopFields, .pPadArray)
+		If $$$ISERR(tStatus) Quit
+		If pFlush Do pStream.Flush(.tStatus)
+		If $$$ISERR(tStatus) Quit
+	}
+	Catch ex {
+		Set tStatus = ex.AsStatus()
+	}
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Parameter name="OBJECTNAME">
+<Default>Demo.RecordMap.Map.Delimited.Record</Default>
+</Parameter>
+
+<Method name="GetRecord">
+<Description>
+Internal helper method to perform parse of incoming data</Description>
+<Internal>1</Internal>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,pObject:%RegisteredObject,pGetTopFields:%Boolean,pTimeout:%Numeric,&pLookAhead:%String="",pLabelFound:%Boolean=0]]></FormalSpec>
+<Private>1</Private>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set tStatus = $$$OK
+	If pLabelFound { Set tRecLabel = "" } 
+	Else { Set tRecLabel = "" } 
+	Set tStatus = ..chunkRecord(pStream, .tRecordData, .tCharCount, "", pTimeout, $char(13,10), tRecLabel, .pLookAhead, "")
+	If $$$ISERR(tStatus) Quit tStatus
+	Set tMaxLocal = $$$MaxLocalLength
+	Set tRecordData("charcount") = +$get(tCharCount)
+	Set tCurrChunk = 1
+	Set tTopPiece = 1
+	Set tCurrSep = 1
+	Set tStrings = 1
+	Set tCurrString = ""
+	Set tSeps = $listbuild($char(59),$char(44),$char(32))
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Else {
+		Set tCurrString = tRecordData(tCurrChunk)
+		Set tCurrPiece = 1
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	If pGetTopFields {
+		Set pObject.PersonID =  pObject.PersonIDDisplayToLogical(tCurrString)
+	}
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	If pGetTopFields {
+		Set pObject.Age =  pObject.AgeDisplayToLogical(tCurrString)
+	}
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	If pGetTopFields {
+		Set pObject.DateOfBirth =  pObject.DateOfBirthDisplayToLogical(tCurrString)
+	}
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	If pGetTopFields {
+		Set pObject.FavoriteColor = tCurrString
+	}
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set tStrings(tStrings) = tCurrString
+	Set tStrings(tStrings+1) = $piece(tStrings(tStrings), $char(44), 1)
+	Set tStrings = tStrings + 1
+	If pGetTopFields {
+		Set pObject.LastName = tStrings(tStrings)
+	}
+	Kill tStrings(tStrings)
+	Set tStrings = tStrings - 1
+	Set tStrings(tStrings+1) = $piece(tStrings(tStrings), $char(44), 2)
+	Set tStrings = tStrings + 1
+	Set tStrings(tStrings+1) = $piece(tStrings(tStrings), $char(32), 1)
+	Set tStrings = tStrings + 1
+	If pGetTopFields {
+		Set pObject.FirstName = tStrings(tStrings)
+	}
+	Kill tStrings(tStrings)
+	Set tStrings = tStrings - 1
+	Set tStrings(tStrings+1) = $piece(tStrings(tStrings), $char(32), 2)
+	Set tStrings = tStrings + 1
+	If pGetTopFields {
+		Set pObject.MiddleInitial = tStrings(tStrings)
+	}
+	Kill tStrings(tStrings)
+	Set tStrings = tStrings - 1
+	Kill tStrings(tStrings)
+	Set tStrings = tStrings - 1
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	If pGetTopFields {
+		Set pObject.SSN = tCurrString
+	}
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.HomeAddress.City = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.HomeAddress.State = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.HomeAddress.StreetLine1 = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.HomeAddress.ZipCode = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.WorkAddress.City = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.WorkAddress.State = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.WorkAddress.StreetLine1 = tCurrString
+	If '$data(tRecordData(tCurrChunk, "block")) {
+		Set tCurrString = $piece(tRecordData(tCurrChunk), $char(59), tTopPiece)
+	}
+	Do ..checkMerge(.tCurrChunk, .tRecordData, .tCurrString, $char(59), .tTopPiece)
+	Set pObject.WorkAddress.ZipCode = tCurrString
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Method name="PutRecord">
+<Description>
+Internal helper method to output object to a stream</Description>
+<Internal>1</Internal>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,pObject:%RegisteredObject,pHasTopFields:%Boolean,&pPadArray:%String]]></FormalSpec>
+<Private>1</Private>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set tStatus = $$$OK
+	Do pStream.Write($select(pHasTopFields: pObject.PersonIDLogicalToDisplay(pObject.PersonID),1: ""),0)
+	Do pStream.Write($char(59) _ $select(pHasTopFields: pObject.AgeLogicalToDisplay(pObject.Age),1: ""),0)
+	Do pStream.Write($char(59) _ $select(pHasTopFields: pObject.DateOfBirthLogicalToDisplay(pObject.DateOfBirth),1: ""),0)
+	Do pStream.Write($char(59) _ $select(pHasTopFields: pObject.FavoriteColor,1: ""),0)
+	Do pStream.Write($char(59),0)
+	Do pStream.Write($select(pHasTopFields: pObject.LastName,1: ""),0)
+	Do pStream.Write($char(44),0)
+	Do pStream.Write($select(pHasTopFields: pObject.FirstName,1: ""),0)
+	Do pStream.Write($char(32) _ $select(pHasTopFields: pObject.MiddleInitial,1: ""),0)
+	Do pStream.Write($char(59) _ $select(pHasTopFields: pObject.SSN,1: ""),0)
+	Do pStream.Write($char(59) _ pObject.HomeAddress.City,0)
+	Do pStream.Write($char(59) _ pObject.HomeAddress.State,0)
+	Do pStream.Write($char(59) _ pObject.HomeAddress.StreetLine1,0)
+	Do pStream.Write($char(59) _ pObject.HomeAddress.ZipCode,0)
+	Do pStream.Write($char(59) _ pObject.WorkAddress.City,0)
+	Do pStream.Write($char(59) _ pObject.WorkAddress.State,0)
+	Do pStream.Write($char(59) _ pObject.WorkAddress.StreetLine1,0)
+	Do pStream.Write($char(59) _ pObject.WorkAddress.ZipCode,0)
+	Do pStream.Write($char(13,10), 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Method name="GetGeneratedClasses">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>*pClasses:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Kill pClasses
+	Set pClasses("Demo.RecordMap.Map.Delimited.Record")=""
+	Set pClasses("Demo.RecordMap.Map.Delimited.Record.HomeAddress")=""
+	Set pClasses("Demo.RecordMap.Map.Delimited.Record.WorkAddress")=""
+	Set pClasses($classname())=""
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="getIdentifier">
+<ClassMethod>1</ClassMethod>
+<CodeMode>expression</CodeMode>
+<FormalSpec/>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[""
+]]></Implementation>
+</Method>
+
+<Method name="getType">
+<ClassMethod>1</ClassMethod>
+<CodeMode>expression</CodeMode>
+<FormalSpec/>
+<ReturnType>EnsLib.RecordMap.Model.DataType.RecordType</ReturnType>
+<Implementation><![CDATA["delimited"
+]]></Implementation>
+</Method>
+
+<XData name="RecordMap">
+<XMLNamespace>http://www.intersystems.com/Ensemble/RecordMap</XMLNamespace>
+<Data><![CDATA[
+<Record xmlns="http://www.intersystems.com/Ensemble/RecordMap" name="Demo.RecordMap.Map.Delimited" type="delimited" char_encoding="UTF-8" targetClassname="Demo.RecordMap.Map.Delimited.Record" complexBatchManaged="0" padFromLeft="0" recordTerminator="\x0d\x0a" allowEarlyTerminator="0">
+  <Separators>
+    <Separator>;</Separator>
+    <Separator>,</Separator>
+    <Separator>\x20</Separator>
+  </Separators>
+  <Field name="PersonID" required="0" datatype="%Integer" index="1">
+  </Field>
+  <Field name="Age" required="0" datatype="%Integer">
+  </Field>
+  <Field name="DateOfBirth" required="0" datatype="%Date" params="FORMAT=1">
+  </Field>
+  <Field name="FavoriteColor" required="0" datatype="%String">
+  </Field>
+  <Composite name="Name" required="0">
+    <Field name="LastName" required="0" datatype="%String" index="1">
+    </Field>
+    <Composite name="GivenNames" required="0">
+      <Field name="FirstName" required="0" datatype="%String">
+      </Field>
+      <Field name="MiddleInitial" required="0" datatype="%String">
+      </Field>
+    </Composite>
+  </Composite>
+  <Field name="SSN" required="0" datatype="%String" index="1" params="PATTERN=3N1&quot;-&quot;2N1&quot;-&quot;4N">
+  </Field>
+  <Field name="HomeAddress.City" required="0" datatype="%String">
+  </Field>
+  <Field name="HomeAddress.State" required="0" datatype="%String" params="MAXLEN=2">
+  </Field>
+  <Field name="HomeAddress.StreetLine1" required="0" datatype="%String">
+  </Field>
+  <Field name="HomeAddress.ZipCode" required="0" datatype="%String">
+  </Field>
+  <Field name="WorkAddress.City" required="0" datatype="%String">
+  </Field>
+  <Field name="WorkAddress.State" required="0" datatype="%String" params="MAXLEN=2">
+  </Field>
+  <Field name="WorkAddress.StreetLine1" required="0" datatype="%String">
+  </Field>
+  <Field name="WorkAddress.ZipCode" required="0" datatype="%String">
+  </Field>
+</Record>
+]]></Data>
+</XData>
+</Class>
+
+
+<Class name="Demo.RecordMap.Map.Delimited.Record">
+<Description>
+This class defines the structure of the record created from the delimited text file.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%Persistent,%XML.Adaptor,Ens.Request,EnsLib.RecordMap.Base</Super>
+<TimeChanged>65420,59894.605653</TimeChanged>
+<TimeCreated>65420,59894.600371</TimeCreated>
+<Inheritance>right</Inheritance>
+
+<Parameter name="INCLUDETOPFIELDS">
+<Default>1</Default>
+</Parameter>
+
+<Property name="PersonID">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="Age">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="DateOfBirth">
+<Type>%Date</Type>
+<Parameter name="FORMAT" value="1"/>
+</Property>
+
+<Property name="FavoriteColor">
+<Type>%String</Type>
+</Property>
+
+<Property name="LastName">
+<Type>%String</Type>
+</Property>
+
+<Property name="FirstName">
+<Type>%String</Type>
+</Property>
+
+<Property name="MiddleInitial">
+<Type>%String</Type>
+</Property>
+
+<Property name="SSN">
+<Description>
+</Description>
+<Type>%String</Type>
+<Parameter name="PATTERN" value="3N1&quot;-&quot;2N1&quot;-&quot;4N"/>
+</Property>
+
+<Property name="HomeAddress">
+<Type>Demo.RecordMap.Map.Delimited.Record.HomeAddress</Type>
+</Property>
+
+<Property name="WorkAddress">
+<Type>Demo.RecordMap.Map.Delimited.Record.WorkAddress</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+<DataLocation>^Demo.RecordMap.MapC0CE.RecordD</DataLocation>
+<DefaultData>RecordDefaultData</DefaultData>
+<IdLocation>^Demo.RecordMap.MapC0CE.RecordD</IdLocation>
+<IndexLocation>^Demo.RecordMap.MapC0CE.RecordI</IndexLocation>
+<StreamLocation>^Demo.RecordMap.MapC0CE.RecordS</StreamLocation>
+<ExtentSize>2000000</ExtentSize>
+<Data name="RecordDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>%Source</Value>
+</Value>
+<Value name="3">
+<Value>Age</Value>
+</Value>
+<Value name="4">
+<Value>DateOfBirth</Value>
+</Value>
+<Value name="5">
+<Value>FavoriteColor</Value>
+</Value>
+<Value name="6">
+<Value>LastName</Value>
+</Value>
+<Value name="7">
+<Value>FirstName</Value>
+</Value>
+<Value name="8">
+<Value>MiddleInitial</Value>
+</Value>
+<Value name="9">
+<Value>SSN</Value>
+</Value>
+<Value name="10">
+<Value>HomeAddress</Value>
+</Value>
+<Value name="11">
+<Value>WorkAddress</Value>
+</Value>
+<Value name="12">
+<Value>%ParentBatch</Value>
+</Value>
+<Value name="13">
+<Value>PersonID</Value>
+</Value>
+</Data>
+</Storage>
+
+<Index name="LastNameIdx">
+<Properties>LastName</Properties>
+</Index>
+
+<Index name="PersonIDIdx">
+<Properties>PersonID</Properties>
+</Index>
+
+<Index name="SSNIdx">
+<Properties>SSN</Properties>
+</Index>
+
+<Parameter name="RECORDMAPGENERATED">
+<Default>1</Default>
+</Parameter>
+</Class>
+
+
+<Class name="Demo.RecordMap.Map.Delimited.Record.HomeAddress">
+<Description>
+This class defines the structure of the HomeAddress portion of the record.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%SerialObject,%XML.Adaptor</Super>
+<TimeChanged>65420,59894.595639</TimeChanged>
+<TimeCreated>65420,59894.593968</TimeCreated>
+<Inheritance>right</Inheritance>
+
+<Property name="City">
+<Type>%String</Type>
+</Property>
+
+<Property name="State">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="2"/>
+</Property>
+
+<Property name="StreetLine1">
+<Type>%String</Type>
+</Property>
+
+<Property name="ZipCode">
+<Type>%String</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Serial</Type>
+<State>HomeAddressState</State>
+<StreamLocation>^Demo.RecordMap66BA.HomeAddressS</StreamLocation>
+<Data name="HomeAddressState">
+<Value name="1">
+<Value>City</Value>
+</Value>
+<Value name="2">
+<Value>State</Value>
+</Value>
+<Value name="3">
+<Value>StreetLine1</Value>
+</Value>
+<Value name="4">
+<Value>ZipCode</Value>
+</Value>
+</Data>
+</Storage>
+
+<Parameter name="RECORDMAPGENERATED">
+<Default>1</Default>
+</Parameter>
+</Class>
+
+
+<Class name="Demo.RecordMap.Map.Delimited.Record.WorkAddress">
+<Description>
+This class defines the structure of the WorkAddress portion of the record.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%SerialObject,%XML.Adaptor</Super>
+<TimeChanged>65420,59894.598025</TimeChanged>
+<TimeCreated>65420,59894.596525</TimeCreated>
+<Inheritance>right</Inheritance>
+
+<Property name="City">
+<Type>%String</Type>
+</Property>
+
+<Property name="State">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="2"/>
+</Property>
+
+<Property name="StreetLine1">
+<Type>%String</Type>
+</Property>
+
+<Property name="ZipCode">
+<Type>%String</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Serial</Type>
+<State>WorkAddressState</State>
+<StreamLocation>^Demo.RecordMap66BA.WorkAddressS</StreamLocation>
+<Data name="WorkAddressState">
+<Value name="1">
+<Value>City</Value>
+</Value>
+<Value name="2">
+<Value>State</Value>
+</Value>
+<Value name="3">
+<Value>StreetLine1</Value>
+</Value>
+<Value name="4">
+<Value>ZipCode</Value>
+</Value>
+</Data>
+</Storage>
+
+<Parameter name="RECORDMAPGENERATED">
+<Default>1</Default>
+</Parameter>
+</Class>
+
+
+<Class name="Demo.RecordMap.Map.FixedWidth">
+<Description>
+This record map maps data from a persistent InterSystems IRIS messages to a fixed width text file.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>EnsLib.RecordMap.RecordMap</Super>
+<TimeChanged>64910,32412</TimeChanged>
+<TimeCreated>61860,38243.144482</TimeCreated>
+
+<XData name="RecordMap">
+<XMLNamespace>http://www.intersystems.com/Ensemble/RecordMap</XMLNamespace>
+<Data><![CDATA[
+<Record xmlns="http://www.intersystems.com/Ensemble/RecordMap" name="Demo.RecordMap.Map.FixedWidth" type="fixedwidth" char_encoding="UTF-8" targetClassname="Demo.RecordMap.Map.FixedWidth.Record" paddingChars="\x20" padFromLeft="0" recordTerminator="\x0d\x0a">
+  <Field name="PersonID" required="0" datatype="%String" width="8" index="1"></Field>
+  <Field name="FirstName" required="0" datatype="%String" width="25"></Field>
+  <Field name="MiddleInitial" required="0" datatype="%String" width="25"></Field>
+  <Field name="LastName" required="0" datatype="%String" width="30"></Field>
+  <Field name="DateOfBirth" required="0" datatype="%Date" width="10" params="FORMAT=3"></Field>
+  <Field name="SSN" required="0" datatype="%String" width="11" index="1" params="PATTERN=3N1&quot;-&quot;2N1&quot;-&quot;4N"></Field>
+  <Composite name="HomeAddress" required="0">
+    <Field name="HomeAddress.StreetLine1" required="0" datatype="%String" width="30"></Field>
+    <Field name="HomeAddress.City" required="0" datatype="%String" width="25"></Field>
+    <Field name="HomeAddress.State" required="0" datatype="%String" width="2"></Field>
+    <Field name="HomeAddress.ZipCode" required="0" datatype="%String" width="5"></Field>
+  </Composite>
+</Record>
+]]></Data>
+</XData>
+
+<Method name="PutObject">
+<Description>
+Method to write a record to a stream or device. This method will be generated based on the
+structure of the RecordMap. For testing purposes, a file name may be passed in the pStream argument.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,pObject:%RegisteredObject,pFlush:%Boolean=1,&pPadArray:%String]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Try {
+		Set tStatus = $$$OK
+		If '$IsObject(pStream) {
+			Set tFilename = pStream
+			Set pStream = ##class(%IO.FileStream).%New()
+			Do pStream.Open(tFilename,"WAE",,"UTF-8", .tStatus)
+			If $$$ISERR(tStatus) Quit
+		}
+		Set tHasTopFields = $parameter(pObject,"INCLUDETOPFIELDS")
+		Set pStream.CharEncoding = "UTF-8"
+
+		Set tStatus = ..PutRecord(pStream, pObject, tHasTopFields, .pPadArray)
+		If $$$ISERR(tStatus) Quit
+		If pFlush Do pStream.Flush(.tStatus)
+		If $$$ISERR(tStatus) Quit
+	}
+	Catch ex {
+		Set tStatus = ex.AsStatus()
+	}
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Parameter name="OBJECTNAME">
+<Default>Demo.RecordMap.Map.FixedWidth.Record</Default>
+</Parameter>
+
+<Method name="GetObject">
+<Description>
+Method to retrieve a record from a stream or device. This method will be generated based on the
+structure of the RecordMap. For testing purposes, a file name may be passed in the pStream argument.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,*pObject:%RegisteredObject,pTimeout:%Numeric=-1,&pLookAhead:%String="",pLabelFound:%Boolean=0]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Try {
+		Set tStatus = $$$OK
+		Set pObject = $$$NULLOREF
+		If '$IsObject(pStream) {
+			Set tFilename = pStream
+			Set pStream = ##class(%IO.FileStream).%New()
+			Do pStream.Open(tFilename,,pTimeout,"UTF-8", .tStatus)
+			If $$$ISERR(tStatus) Quit
+		}
+		Set tObjectName = $parameter($this,"OBJECTNAME")
+		Set tObject = $classmethod(tObjectName,"%New")
+		If '$IsObject(tObject) {
+			Set tStatus = $$$ERROR($$$CannotCreateObject,tObjectName)
+			Quit
+		}
+		Set tObject.%Source = pStream.Name
+		Set tGetTopFields = $parameter(tObject,"INCLUDETOPFIELDS")
+		If pStream.AtEnd {
+			Set tStatus = $$$ERROR($$$EnsRecordMapErrStreamAtEnd, pStream.Name)
+			Quit
+		}
+		Set pStream.CharEncoding = "UTF-8"
+
+		#; Parse incoming stream
+		Set tStatus = ..GetRecord(pStream, tObject, tGetTopFields, pTimeout, pLookAhead, pLabelFound)
+		If $$$ISERR(tStatus) Quit
+	}
+	Catch ex {
+		Set tStatus = ex.AsStatus()
+	}
+	If $$$ISERR(tStatus) { Set pObject = $$$NULLOREF }
+	Else { Set pObject = tObject }
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Method name="PutRecord">
+<Description>
+Internal helper method to output object to a stream</Description>
+<Internal>1</Internal>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,pObject:%RegisteredObject,pHasTopFields:%Boolean,&pPadArray:%String]]></FormalSpec>
+<Private>1</Private>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set tStatus = $$$OK
+	If pHasTopFields { Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record).PersonIDLogicalToDisplay(pObject.PersonID), tLen = $length(tValue) }
+	Else { Set tValue = "", tLen = 0}
+	If 8 > tLen {
+		Set tPadding = $get(pPadArray(8 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (8 - tLen + 1)) = ""
+			Set pPadArray(8-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	If pHasTopFields { Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record).FirstNameLogicalToDisplay(pObject.FirstName), tLen = $length(tValue) }
+	Else { Set tValue = "", tLen = 0}
+	If 25 > tLen {
+		Set tPadding = $get(pPadArray(25 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (25 - tLen + 1)) = ""
+			Set pPadArray(25-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	If pHasTopFields { Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record).MiddleInitialLogicalToDisplay(pObject.MiddleInitial), tLen = $length(tValue) }
+	Else { Set tValue = "", tLen = 0}
+	If 25 > tLen {
+		Set tPadding = $get(pPadArray(25 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (25 - tLen + 1)) = ""
+			Set pPadArray(25-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	If pHasTopFields { Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record).LastNameLogicalToDisplay(pObject.LastName), tLen = $length(tValue) }
+	Else { Set tValue = "", tLen = 0}
+	If 30 > tLen {
+		Set tPadding = $get(pPadArray(30 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (30 - tLen + 1)) = ""
+			Set pPadArray(30-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	If pHasTopFields { Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record).DateOfBirthLogicalToDisplay(pObject.DateOfBirth), tLen = $length(tValue) }
+	Else { Set tValue = "", tLen = 0}
+	If 10 > tLen {
+		Set tPadding = $get(pPadArray(10 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (10 - tLen + 1)) = ""
+			Set pPadArray(10-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	If pHasTopFields { Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record).SSNLogicalToDisplay(pObject.SSN), tLen = $length(tValue) }
+	Else { Set tValue = "", tLen = 0}
+	If 11 > tLen {
+		Set tPadding = $get(pPadArray(11 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (11 - tLen + 1)) = ""
+			Set pPadArray(11-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record.HomeAddress).StreetLine1LogicalToDisplay(pObject.HomeAddress.StreetLine1), tLen = $length(tValue)
+	If 30 > tLen {
+		Set tPadding = $get(pPadArray(30 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (30 - tLen + 1)) = ""
+			Set pPadArray(30-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record.HomeAddress).CityLogicalToDisplay(pObject.HomeAddress.City), tLen = $length(tValue)
+	If 25 > tLen {
+		Set tPadding = $get(pPadArray(25 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (25 - tLen + 1)) = ""
+			Set pPadArray(25-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record.HomeAddress).StateLogicalToDisplay(pObject.HomeAddress.State), tLen = $length(tValue)
+	If 2 > tLen {
+		Set tPadding = $get(pPadArray(2 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (2 - tLen + 1)) = ""
+			Set pPadArray(2-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Set tValue = ##class(Demo.RecordMap.Map.FixedWidth.Record.HomeAddress).ZipCodeLogicalToDisplay(pObject.HomeAddress.ZipCode), tLen = $length(tValue)
+	If 5 > tLen {
+		Set tPadding = $get(pPadArray(5 - tLen))
+		If tPadding = "" {
+			Set $piece(tPadding, $char(32), (5 - tLen + 1)) = ""
+			Set pPadArray(5-tLen) = tPadding
+		}
+		Set tValue = tValue_tPadding
+	}
+	Do pStream.Write(tValue, 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Do pStream.Write($char(13,10), 0, .tStatus)
+	If $$$ISERR(tStatus) Quit tStatus
+	Quit tStatus
+]]></Implementation>
+</Method>
+
+<Method name="GetRecord">
+<Description>
+Internal helper method to perform parse of incoming data</Description>
+<Internal>1</Internal>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[pStream:%IO.DeviceStream,pObject:%RegisteredObject,pGetTopFields:%Boolean,pTimeout:%Numeric,&pLookAhead:%String="",pLabelFound:%Boolean=0]]></FormalSpec>
+<Private>1</Private>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set tStatus = $$$OK
+	If pLabelFound { Set tRecLabel = "" } 
+	Else { Set tRecLabel = "" } 
+	Set tMaxLen = 171
+	Set tStatus = ..chunkRecord(pStream, .tRecordData, .tCharCount, tMaxLen, pTimeout, $char(13,10), tRecLabel, pLookAhead)
+	If $$$ISERR(tStatus) Quit tStatus
+	Set tMaxLocal = $$$MaxLocalLength
+	Set tRecordData("charcount") = +$get(tCharCount)
+	Set tCurrChunk = 1
+	Set tCurrPos = 1
+	Set tNewChunk = 1
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,8,"","","PersonID")
+	If $$$ISERR(tStatus) Quit tStatus
+	If pGetTopFields Set pObject.PersonID = pObject.PersonIDDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,25,"","","FirstName")
+	If $$$ISERR(tStatus) Quit tStatus
+	If pGetTopFields Set pObject.FirstName = pObject.FirstNameDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,25,"","","MiddleInitial")
+	If $$$ISERR(tStatus) Quit tStatus
+	If pGetTopFields Set pObject.MiddleInitial = pObject.MiddleInitialDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,30,"","","LastName")
+	If $$$ISERR(tStatus) Quit tStatus
+	If pGetTopFields Set pObject.LastName = pObject.LastNameDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,10,"","","DateOfBirth")
+	If $$$ISERR(tStatus) Quit tStatus
+	If pGetTopFields Set pObject.DateOfBirth = pObject.DateOfBirthDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,11,"","","SSN")
+	If $$$ISERR(tStatus) Quit tStatus
+	If pGetTopFields Set pObject.SSN = pObject.SSNDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,30,"","","HomeAddress.StreetLine1")
+	If $$$ISERR(tStatus) Quit tStatus
+	Set pObject.HomeAddress.StreetLine1 = pObject.HomeAddress.StreetLine1DisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,25,"","","HomeAddress.City")
+	If $$$ISERR(tStatus) Quit tStatus
+	Set pObject.HomeAddress.City = pObject.HomeAddress.CityDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,2,"","","HomeAddress.State")
+	If $$$ISERR(tStatus) Quit tStatus
+	Set pObject.HomeAddress.State = pObject.HomeAddress.StateDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Set tCurrVal = ..checkFixedWidthChunk(.tStatus,.tNewChunk,.tCurrChunk,.tRecordData,.tCurrString,.tCurrLen,.tCurrPos,5,"","","HomeAddress.ZipCode")
+	If $$$ISERR(tStatus) Quit tStatus
+	Set pObject.HomeAddress.ZipCode = pObject.HomeAddress.ZipCodeDisplayToLogical($ZStrip(tCurrVal, ">", $char(32)))
+	Quit tStatus
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Demo.RecordMap.Map.FixedWidth.Record">
+<Description>
+This class defines the structure of the fixed width record.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%Persistent,%XML.Adaptor,Ens.Request,EnsLib.RecordMap.Base</Super>
+<TimeChanged>64910,32412</TimeChanged>
+<TimeCreated>61999,67338.38603</TimeCreated>
+<Inheritance>right</Inheritance>
+
+<Index name="PersonIDIdx">
+<Properties>PersonID</Properties>
+</Index>
+
+<Index name="SSNIdx">
+<Properties>SSN</Properties>
+</Index>
+
+<Parameter name="RECORDMAPGENERATED">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="INCLUDETOPFIELDS">
+<Default>1</Default>
+</Parameter>
+
+<Property name="PersonID">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="8"/>
+</Property>
+
+<Property name="FirstName">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="25"/>
+</Property>
+
+<Property name="MiddleInitial">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="25"/>
+</Property>
+
+<Property name="LastName">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="30"/>
+</Property>
+
+<Property name="DateOfBirth">
+<Type>%Date</Type>
+<Parameter name="FORMAT" value="3"/>
+</Property>
+
+<Property name="SSN">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="11"/>
+<Parameter name="PATTERN" value="3N1&quot;-&quot;2N1&quot;-&quot;4N"/>
+</Property>
+
+<Property name="HomeAddress">
+<Type>Demo.RecordMap.Map.FixedWidth.Record.HomeAddress</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+<DataLocation>^Demo.RecordMap.Map7F0B.RecordD</DataLocation>
+<DefaultData>RecordDefaultData</DefaultData>
+<IdLocation>^Demo.RecordMap.Map7F0B.RecordD</IdLocation>
+<IndexLocation>^Demo.RecordMap.Map7F0B.RecordI</IndexLocation>
+<StreamLocation>^Demo.RecordMap.Map7F0B.RecordS</StreamLocation>
+<ExtentSize>2000000</ExtentSize>
+<Data name="RecordDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>%Source</Value>
+</Value>
+<Value name="3">
+<Value>FirstName</Value>
+</Value>
+<Value name="4">
+<Value>MiddleInitial</Value>
+</Value>
+<Value name="5">
+<Value>LastName</Value>
+</Value>
+<Value name="6">
+<Value>DateOfBirth</Value>
+</Value>
+<Value name="7">
+<Value>SSN</Value>
+</Value>
+<Value name="8">
+<Value>HomeAddress</Value>
+</Value>
+<Value name="9">
+<Value>PersonID</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+
+
+<Class name="Demo.RecordMap.Map.FixedWidth.Record.HomeAddress">
+<Description>
+This class defines the structure of the HomeAddress portion of the record.</Description>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%SerialObject,%XML.Adaptor</Super>
+<TimeChanged>64910,32412</TimeChanged>
+<TimeCreated>61999,67338.37226</TimeCreated>
+<Inheritance>right</Inheritance>
+
+<Parameter name="RECORDMAPGENERATED">
+<Default>1</Default>
+</Parameter>
+
+<Property name="StreetLine1">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="30"/>
+</Property>
+
+<Property name="City">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="25"/>
+</Property>
+
+<Property name="State">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="2"/>
+</Property>
+
+<Property name="ZipCode">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="5"/>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Serial</Type>
+<State>HomeAddressState</State>
+<StreamLocation>^Demo.RecordMapA535.HomeAddressS</StreamLocation>
+<Data name="HomeAddressState">
+<Value name="1">
+<Value>StreetLine1</Value>
+</Value>
+<Value name="2">
+<Value>City</Value>
+</Value>
+<Value name="3">
+<Value>State</Value>
+</Value>
+<Value name="4">
+<Value>ZipCode</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+
+
+<Class name="Demo.RecordMap.Production">
+<ProcedureBlock>1</ProcedureBlock>
+<Super>Ens.Production</Super>
+<TimeChanged>65420,58585.227577</TimeChanged>
+<TimeCreated>61860,58884.126262</TimeCreated>
+
+<XData name="ProductionDefinition">
+<Data><![CDATA[
+<Production Name="Demo.RecordMap.Production" LogGeneralTraceEvents="false">
+  <Description>Sample Production to illustrate a simple input/output transformation using generated RecordMaps. NOTE: The source file, RecordMap.Delimited.Input.txt, and a sample output file, RecordMap.Delimited.Output.txt, should be located in [install_dir]/dev/RecordMap/.</Description>
+  <ActorPoolSize>2</ActorPoolSize>
+  <Item Name="Delimited.RecordMap.FileService" Category="" ClassName="EnsLib.RecordMap.Service.FileService" PoolSize="1" Enabled="true" Foreground="false" Comment="File service to process files containing delimited records" LogTraceEvents="false" Schedule="">
+    <Setting Target="Host" Name="RecordMap">Demo.RecordMap.Map.Delimited</Setting>
+    <Setting Target="Host" Name="TargetConfigNames">FixedWidth.RecordMap.FileOperation</Setting>
+    <Setting Target="Host" Name="InactivityTimeout">0</Setting>
+    <Setting Target="Adapter" Name="FilePath">C:\Practice\in\</Setting>
+    <Setting Target="Adapter" Name="FileSpec">RecordMap_Delimited_*</Setting>
+    <Setting Target="Adapter" Name="ArchivePath">C:\Practice\out</Setting>
+  </Item>
+  <Item Name="FixedWidth.RecordMap.FileOperation" Category="" ClassName="EnsLib.RecordMap.Operation.FileOperation" PoolSize="1" Enabled="true" Foreground="false" Comment="File operation to write data out into fixed width records" LogTraceEvents="false" Schedule="">
+    <Setting Target="Host" Name="Filename">RecordMap_FixedWidth_Output.txt</Setting>
+    <Setting Target="Host" Name="RecordMap">Demo.RecordMap.Map.FixedWidth</Setting>
+    <Setting Target="Host" Name="InactivityTimeout">0</Setting>
+    <Setting Target="Adapter" Name="FilePath">C:\Practice\out\</Setting>
+  </Item>
+</Production>
+]]></Data>
+</XData>
+</Class>
+
+
+<Project name="EnsExportProduction_2020-02-11 16-38-42_140-5" LastModified="2020-02-11 16:39:27.532841">
+  <ProjectDescription>Studio Project generated from Production 'Demo.RecordMap.Production' at 2020-02-11 21:38:42.140 UTC</ProjectDescription>
+  <Items>
+    <ProjectItem name="Demo.RecordMap.Map.Delimited" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Map.Delimited.Record" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Map.Delimited.Record.HomeAddress" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Map.Delimited.Record.WorkAddress" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Map.FixedWidth" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Map.FixedWidth.Record" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Map.FixedWidth.Record.HomeAddress" type="CLS"></ProjectItem>
+    <ProjectItem name="Demo.RecordMap.Production" type="CLS"></ProjectItem>
+    <ProjectItem name="EnsExportNotes.EnsExportProduction_2020-02-11 16-38-42_140-5.PTD" type="PTD"></ProjectItem>
+  </Items>
+</Project>
+
+
+</Export>
