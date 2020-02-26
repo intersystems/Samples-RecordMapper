@@ -13,7 +13,7 @@ To load the production, you must have an InterSystems IRIS instance. To obtain a
 ## COMPONENTS OF THE PRODUCTION
 
 The production includes two business hosts:
-- **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in a file to a message, and passes the message to the `FixedWidth.RecordMap.FileOperation` business operation. 
+- **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in each file to a message, and passes the messages to the `FixedWidth.RecordMap.FileOperation` business operation. 
 
 	The names of the files must begin with `RecordMap_Delimited_`.
 	
