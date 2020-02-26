@@ -27,21 +27,21 @@ Additionally, the production includes two record maps for converting data:
 
 	`git clone https://github.com/intersystems/Samples-RecordMapper`
 	
-2) Create a production-enabled namespace or enable the USER namespace for productions using the InterSystems Terminal as follows:
+2) Create a production-enabled namespace, or enable the `USER` namespace for productions using the InterSystems Terminal as follows:
 
 	`do ##class(%Library.EnsembleMgr).EnableNamespace("USER")`
 	
-3) In a production-enabled namespace in the InterSystems Management Portal, navigate to **System Explorer** > **Classes** and import `data/Demo_RecordMap_Production.xml`.
+3) In a production-enabled namespace in the InterSystems Management Portal, navigate to **System Explorer** > **Classes**, and import `<repo home>/data/Demo_RecordMap_Production.xml`.
 
 	For instructions, see [Importing Classes](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=ACLS_import).
 	
-4) Navigate to **Interoperability** > **List** > **Productions** and open `Demo.RecordMap.Production`.
-5) Change the **File Path** for `Delimited.RecordMap.FileService` to `<repo home>/data/In`, **Archive Path** to `<repo home>/data/SampleFiles/`. 
+4) Navigate to **Interoperability** > **List** > **Productions**, and open `Demo.RecordMap.Production`.
+5) For `Delimited.RecordMap.FileService`, change the **File Path** value to `<repo home>/data/In` and the **Archive Path** value to `<repo home>/data/SampleFiles/`. 
 	
-	Ensure that you click **Apply** to save your change.
+	Ensure that you click **Apply** to save your changes.
 	
-6) Change the **File Path** for `Delimited.RecordMap.BatchOperation` to `<repo home>/data/Out`. 
-7) Change the **File Path** for `FixedWidth.RecordMap.FileOperation` to `<repo home>/data/Out`.
+6) For `Delimited.RecordMap.BatchOperation`, change the **File Path** value to `<repo home>/data/Out`. 
+7) For `FixedWidth.RecordMap.FileOperation`, change the **File Path** value to `<repo home>/data/Out`.
 6) Click **Start** to start the production.
  
 ---
