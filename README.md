@@ -1,7 +1,7 @@
 # Samples-RecordMapper
-This repository contains a sample production that transforms delimited text files into fixed-width text files using record maps. Additionally, the repository contains sample data. You can load the production into your InterSystems IRIS instance and use the sample data to interact with the Record Mapper tool.
+This repository contains a sample production that transforms delimited text files into fixed-width text files using record maps. Additionally, the repository contains sample data. 
 
-The repository illustrates the concepts described in [Using the Record Mapper](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=EGDV_recmap)
+You can load the production into your InterSystems IRIS instance and use it to explore the concepts described in [Using the Record Mapper](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=EGDV_recmap)
 
 ---
 
@@ -10,9 +10,9 @@ To load the production, you must have an InterSystems IRIS instance. To obtain a
 
 ---
 
-##COMPONENTS OF THE PRODUCTION
+## COMPONENTS OF THE PRODUCTION
 
-The `Demo.RecordMap.Production` production includes two business hosts:
+The production includes two business hosts:
 - **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in the file to a message, and passes the message to the `FixedWidth.RecordMap.FileOperation` business operation. The names of the files must begin with `RecordMap_Delimited_`.
 - **`FixedWidth.RecordMap.FileOperation`:** Business operation that consumes messages from the `Delimited.RecordMap.File.Service` business service, maps the fields in the messages to fields in a fixed-width text file, and writes the file to the `<repo home>/data/Out` directory. The name of the output file is `RecordMap_FixedWidth_Output.txt`.
 
