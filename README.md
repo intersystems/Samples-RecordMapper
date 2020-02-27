@@ -13,11 +13,11 @@ To load the production, you must have an InterSystems IRIS instance. To obtain a
 ## COMPONENTS OF THE PRODUCTION
 
 The production includes two business hosts:
-- **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in the files to a message, and passes the messages to the `FixedWidth.RecordMap.FileOperation` business operation. 
+- **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in the files to a message, and passes the messages to the `FixedWidth.RecordMap.FileOperation` business operation 
 
 	The names of the input files must begin with `RecordMap_Delimited_`.
 	
-- **`FixedWidth.RecordMap.FileOperation`:** Business operation that consumes messages from the `Delimited.RecordMap.File.Service` business service, maps the fields in the messages to fields in a fixed-width text file, and writes the file to the `<repo home>/data/Out` directory. 
+- **`FixedWidth.RecordMap.FileOperation`:** Business operation that consumes messages from the `Delimited.RecordMap.File.Service` business service, maps the fields in the messages to fields in a fixed-width text file, and writes the file to the `<repo home>/data/Out` directory 
 
 	The name of the output file is `RecordMap_FixedWidth_Output.txt`.
 
