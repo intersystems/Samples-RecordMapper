@@ -13,7 +13,7 @@ To load the production, you must have an InterSystems IRIS instance. To obtain a
 ## COMPONENTS OF THE PRODUCTION
 
 The production includes two business hosts:
-- **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in each file to a message, and passes the messages to the `FixedWidth.RecordMap.FileOperation` business operation. 
+- **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in the files to a message, and passes the messages to the `FixedWidth.RecordMap.FileOperation` business operation. 
 
 	The names of the files must begin with `RecordMap_Delimited_`.
 	
@@ -21,9 +21,9 @@ The production includes two business hosts:
 
 	The name of the output file is `RecordMap_FixedWidth_Output.txt`.
 
-Additionally, the production includes two record maps for transforming data:
-- `Demo.RecordMap.Map.Delimited`
-- `Demo.RecordMap.Map.FixedWidth`
+Additionally, the production includes two record maps for handling delimited and fixed-width records:
+- **`Demo.RecordMap.Map.Delimited`:** Specifies the order of the fields and the delimiters
+- **`Demo.RecordMap.Map.FixedWidth`:** Describes the order and width of the fields
 
 ---
 
@@ -31,6 +31,9 @@ Additionally, the production includes two record maps for transforming data:
 1) Clone this repository: 
 
 	`git clone https://github.com/intersystems/Samples-RecordMapper`
+	
+	The directory that GitHub cloned the repository to is referred to as `<repo home>`.
+	*IMPORTANT:* Do not modify the contents or directory structure of `<repo home>`.
 	
 2) Create a production-enabled namespace, or enable the `USER` namespace for productions using the InterSystems Terminal as follows:
 
@@ -41,23 +44,29 @@ Additionally, the production includes two record maps for transforming data:
 	For instructions, see [Importing Classes](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=ACLS_import).
 	
 4) Navigate to **Interoperability** > **List** > **Productions**, and open `Demo.RecordMap.Production`.
-5) For `Delimited.RecordMap.FileService`, change the **File Path** value to `<repo home>/data/In` and the **Archive Path** value to `<repo home>/data/SampleFiles/`. 
 	
-	Ensure that you click **Apply** to save your changes.
+5) For `Delimited.RecordMap.FileService`, change the **File Path** value to `<repo home>/data/In` and the **Archive Path** value to `<repo home>/data/SampleFiles`, using the appropriate file path separators for your operating system. 
+	
+	You must click **Apply** to save your changes. 
 	
 6) For `Delimited.RecordMap.BatchOperation`, change the **File Path** value to `<repo home>/data/Out`. 
 7) For `FixedWidth.RecordMap.FileOperation`, change the **File Path** value to `<repo home>/data/Out`.
-6) Click **Start** to start the production.
+8) Click **Start** to start the production.
+
+	The business service reads the delimited text file in the `<repo home>/data/In` directory and sends a message to the business operation, which writes two fixed-width records to `<repo home>/data/Out/RecordMap_FixedWidth_Output.txt`.
+	
  
 ---
 
 ## REVIEW THE INPUT AND OUTPUT DATA
  
-1) Navigate to **Interoperability** > **View** > **Messages** to review the message that you passed in when you started the production.
+1) Navigate to **Interoperability** > **View** > **Messages** to view the message that was sent from the business service to the business operation.
 
 	For more information, see [Viewing, Searching, and Managing Messages](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=EMONITOR_message).
 	
 2) Optionally, pass another message in by copying `RecordMap_Delimited_FL` from the `<repo home>/data/SampleFiles` folder to the `<repo home>/data/In` folder.
+
+	The business operation writes additional records to `<repo home>/data/Out/RecordMap_FixedWidth_Output.txt`, and the timestamp on the file changes.
 
 ---
 
