@@ -15,15 +15,15 @@ To load the production, you must have an InterSystems IRIS instance. To obtain a
 The production includes two business hosts:
 - **`Delimited.RecordMap.FileService`:** Business service that consumes delimited text files in the `<repo home>/data/In` directory, maps each record in the files to a message, and passes the messages to the `FixedWidth.RecordMap.FileOperation` business operation. 
 
-	The names of the files must begin with `RecordMap_Delimited_`.
+	The names of the input files must begin with `RecordMap_Delimited_`.
 	
 - **`FixedWidth.RecordMap.FileOperation`:** Business operation that consumes messages from the `Delimited.RecordMap.File.Service` business service, maps the fields in the messages to fields in a fixed-width text file, and writes the file to the `<repo home>/data/Out` directory. 
 
 	The name of the output file is `RecordMap_FixedWidth_Output.txt`.
 
 Additionally, the production includes two record maps for handling delimited and fixed-width records:
-- **`Demo.RecordMap.Map.Delimited`:** Specifies the order of the fields and the delimiters
-- **`Demo.RecordMap.Map.FixedWidth`:** Describes the order and width of the fields
+- **`Demo.RecordMap.Map.Delimited`:** Specifies the delimiters and order of the fields in delimited records
+- **`Demo.RecordMap.Map.FixedWidth`:** Specifies the width and order of the fields in fixed-width records
 
 ---
 
@@ -32,8 +32,9 @@ Additionally, the production includes two record maps for handling delimited and
 
 	`git clone https://github.com/intersystems/Samples-RecordMapper`
 	
-	The directory that GitHub cloned the repository to is referred to as `<repo home>`.
-	*IMPORTANT:* Do not modify the contents or directory structure of `<repo home>`.
+	The resulting directory is referred to as `<repo home>` below.
+	
+	*IMPORTANT:* Do not modify the contents or structure of `<repo home>`.
 	
 2) Create a production-enabled namespace, or enable the `USER` namespace for productions using the InterSystems Terminal as follows:
 
