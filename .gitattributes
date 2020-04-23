@@ -1,0 +1,2 @@
+# To work properly, the sample files must retain their CRLF line endings on checkout.
+*.txt text eol=crlf
